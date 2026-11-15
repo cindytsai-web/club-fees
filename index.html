@@ -1,0 +1,1070 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>羽球社分帳</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8F%B8%3C/text%3E%3C/svg%3E">
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+
+  :root {
+    --bg: #f3f6f3;
+    --card: #ffffff;
+    --ink: #16221b;
+    --muted: #6b7a70;
+    --line: #e2e8e2;
+    --green: #0f9d63;
+    --green-600: #0b7d4e;
+    --green-soft: #e8f7ef;
+    --amber-soft: #fff2d8;
+    --amber: #96600a;
+    --radius: 18px;
+    --shadow: 0 1px 2px rgba(20, 40, 30, .05), 0 10px 30px -20px rgba(20, 40, 30, .35);
+  }
+
+  html, body { margin: 0; padding: 0; }
+
+  body {
+    min-height: 100vh;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", system-ui, -apple-system, "Segoe UI", sans-serif;
+    font-size: 15px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  button, input, select { font-family: inherit; }
+
+  :focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
+
+  /* ---------- top bar ---------- */
+  .topbar {
+    position: sticky; top: 0; z-index: 30;
+    background: rgba(255, 255, 255, .88);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--line);
+  }
+  .topbar-inner {
+    max-width: 1080px; margin: 0 auto; padding: 11px 20px;
+    display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+  }
+  .brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
+  .logo { font-size: 26px; line-height: 1; }
+  .brand h1 { margin: 0; font-size: 17px; font-weight: 800; letter-spacing: -.01em; }
+  .brand p { margin: 0; font-size: 12px; color: var(--muted); }
+
+  .tabs {
+    margin-left: auto; display: flex; gap: 4px; padding: 4px;
+    background: #edf1ed; border-radius: 12px; overflow-x: auto;
+  }
+  .tab {
+    border: 0; background: transparent; padding: 7px 14px; border-radius: 9px;
+    color: var(--muted); font-size: 14px; font-weight: 700; cursor: pointer;
+    white-space: nowrap; display: inline-flex; align-items: center; gap: 6px;
+    transition: background .15s, color .15s;
+  }
+  .tab:hover { color: var(--ink); }
+  .tab.active { background: #fff; color: var(--ink); box-shadow: 0 1px 3px rgba(0, 0, 0, .09); }
+  .badge {
+    min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px;
+    background: var(--green-soft); color: var(--green-600);
+    font-size: 11px; font-weight: 800; display: inline-grid; place-items: center;
+  }
+  .badge:empty { display: none; }
+
+  /* ---------- layout ---------- */
+  main { max-width: 1080px; margin: 0 auto; padding: 22px 20px 72px; }
+  .panel { display: none; }
+  .panel.active { display: block; }
+  .layout {
+    display: grid; grid-template-columns: minmax(0, 1fr) 360px;
+    gap: 18px; align-items: start;
+  }
+  .stack { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+  .narrow { max-width: 660px; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow);
+  }
+  .card h2 { margin: 0; font-size: 16px; font-weight: 800; letter-spacing: -.01em; }
+  .card-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+  .hint-inline { font-size: 12px; color: var(--muted); }
+  .hint { margin: 8px 0 0; font-size: 12.5px; color: var(--muted); line-height: 1.6; }
+  .pill {
+    display: inline-block; padding: 3px 10px; border-radius: 999px;
+    background: var(--green-soft); color: var(--green-600);
+    font-size: 12px; font-weight: 700; white-space: nowrap;
+  }
+  .grow { flex: 1; }
+</style>
+<style>
+  /* ---------- form fields ---------- */
+  .field-grid {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 12px; margin-top: 16px;
+  }
+  .field { display: flex; flex-direction: column; gap: 6px; font-size: 12.5px; font-weight: 700; color: var(--muted); }
+  .field input, .sum-field select, .sum-field input {
+    width: 100%; height: 46px; border: 1.5px solid var(--line); border-radius: 11px;
+    background: #fbfcfb; padding: 0 12px; color: var(--ink); font-size: 16px; font-weight: 600;
+    transition: border-color .15s, box-shadow .15s, background .15s;
+  }
+  .field input:hover { border-color: #cfd9d1; }
+  .field input:focus {
+    outline: none; border-color: var(--green); background: #fff;
+    box-shadow: 0 0 0 3px rgba(15, 157, 99, .13);
+  }
+  .field input::placeholder { color: #b3bfb6; font-weight: 500; }
+  input[type=number]::-webkit-outer-spin-button,
+  input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  input[type=number] { -moz-appearance: textfield; appearance: textfield; }
+
+  .money { position: relative; display: block; }
+  .money i {
+    position: absolute; left: 13px; top: 50%; transform: translateY(-50%);
+    font-style: normal; font-size: 12.5px; font-weight: 700; color: var(--muted); pointer-events: none;
+  }
+  .money input { padding-left: 46px; }
+
+  .cost-lines {
+    margin-top: 18px; padding-top: 14px; border-top: 1px dashed var(--line);
+    display: flex; flex-direction: column; gap: 7px; font-size: 14px;
+  }
+  .cost-lines > div { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; color: var(--muted); }
+  .cost-lines b { color: var(--ink); font-weight: 700; font-variant-numeric: tabular-nums; }
+  .cost-lines small { color: var(--muted); font-weight: 500; }
+  .cost-lines .cost-total {
+    margin-top: 5px; padding-top: 11px; border-top: 1px solid var(--line);
+    color: var(--ink); font-weight: 800; font-size: 15px;
+  }
+  .cost-lines .cost-total b { font-size: 21px; letter-spacing: -.01em; }
+
+  /* ---------- attendance ---------- */
+  .att-list {
+    display: flex; flex-direction: column; gap: 6px; margin-top: 14px;
+    max-height: 430px; overflow-y: auto; padding-right: 2px;
+  }
+  .att-row {
+    display: flex; align-items: center; gap: 9px; padding: 8px 10px;
+    border: 1px solid transparent; border-radius: 12px; background: #f7faf7; min-height: 46px;
+  }
+  .att-row:hover { background: #f1f6f1; }
+  .att-row.on { background: var(--green-soft); border-color: #cdebd9; }
+  .att-row.on:hover { background: #e0f4e9; }
+  .att-row .name { font-weight: 700; cursor: pointer; }
+  .tick {
+    flex: none; width: 24px; height: 24px; padding: 0; border-radius: 50%;
+    border: 2px solid #cfd8cf; background: #fff; color: transparent;
+    display: grid; place-items: center; cursor: pointer; transition: .15s;
+  }
+  .tick svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 3.2; stroke-linecap: round; stroke-linejoin: round; }
+  .att-row.on .tick { background: var(--green); border-color: var(--green); color: #fff; }
+  .tick.static { background: var(--green); border-color: var(--green); color: #fff; cursor: default; }
+  .tag { font-size: 10.5px; font-weight: 800; padding: 2px 7px; border-radius: 999px; letter-spacing: .02em; white-space: nowrap; }
+  .tag.guest { background: #edf1f7; color: #4a5a72; }
+  .tag.free { background: var(--amber-soft); color: var(--amber); }
+  .first-toggle {
+    display: flex; align-items: center; gap: 5px; padding: 5px 8px; border-radius: 8px;
+    font-size: 12px; font-weight: 700; color: var(--muted); cursor: pointer; user-select: none; white-space: nowrap;
+  }
+  .first-toggle:hover { background: rgba(0, 0, 0, .045); }
+  .first-toggle input { width: 15px; height: 15px; accent-color: var(--green); cursor: pointer; margin: 0; }
+  .first-toggle:has(input:disabled) { opacity: .38; cursor: not-allowed; }
+  .first-toggle:has(input:disabled):hover { background: transparent; }
+  .icon-btn {
+    flex: none; width: 28px; height: 28px; border: 0; border-radius: 8px;
+    background: transparent; color: var(--muted); font-size: 13px; cursor: pointer;
+  }
+  .icon-btn:hover { background: rgba(0, 0, 0, .06); color: #b3261e; }
+
+  .add-row { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+  .add-row input {
+    flex: 1; min-width: 150px; height: 44px; border: 1.5px solid var(--line); border-radius: 11px;
+    background: #fbfcfb; padding: 0 12px; font-size: 15px; color: var(--ink);
+  }
+  .add-row input:focus { outline: none; border-color: var(--green); background: #fff; box-shadow: 0 0 0 3px rgba(15, 157, 99, .13); }
+
+  .empty {
+    margin-top: 14px; padding: 22px 18px; text-align: center; color: var(--muted);
+    background: #f8faf8; border: 1px dashed #d9e2da; border-radius: 12px; font-size: 13.5px; line-height: 1.7;
+  }
+</style>
+<style>
+  /* ---------- buttons ---------- */
+  .btn {
+    height: 46px; padding: 0 18px; border-radius: 11px; border: 1.5px solid transparent;
+    font-size: 14.5px; font-weight: 800; cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    transition: background .15s, border-color .15s, opacity .15s;
+  }
+  .btn.primary { background: var(--green); color: #fff; }
+  .btn.primary:hover { background: var(--green-600); }
+  .btn.ghost { background: #fff; border-color: var(--line); color: var(--ink); }
+  .btn.ghost:hover { border-color: #c6d3c9; background: #fafcfa; }
+  .btn.on-green { width: 100%; margin-top: 16px; background: #fff; color: var(--green-600); }
+  .btn.on-green:hover { background: #f1fbf5; }
+  .btn.on-green:disabled { opacity: .45; cursor: not-allowed; }
+  .btn.text {
+    width: 100%; height: 38px; margin-top: 4px; background: transparent;
+    color: rgba(255, 255, 255, .72); font-size: 12.5px; font-weight: 700;
+  }
+  .btn.text:hover { color: #fff; }
+
+  /* ---------- summary ---------- */
+  .summary {
+    background: linear-gradient(158deg, #12a76a 0%, #0b7d4e 62%, #086a42 100%);
+    border: 0; color: #fff;
+    box-shadow: 0 16px 40px -24px rgba(8, 106, 66, .9);
+    position: sticky; top: 84px;
+  }
+  .summary-label { font-size: 12.5px; font-weight: 700; color: rgba(255, 255, 255, .74); }
+  .per-person { display: flex; align-items: baseline; gap: 5px; margin: 1px 0 2px; }
+  .per-person span { font-size: 17px; font-weight: 700; opacity: .78; }
+  .per-person b {
+    font-size: 46px; line-height: 1.12; font-weight: 800; letter-spacing: -.025em;
+    font-variant-numeric: tabular-nums;
+  }
+  .sum-note { min-height: 17px; font-size: 11.5px; color: rgba(255, 255, 255, .72); }
+  .summary-meta {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
+    margin-top: 14px; padding-top: 14px; border-top: 1px solid rgba(255, 255, 255, .22);
+  }
+  .summary-meta div { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+  .summary-meta span { font-size: 11px; font-weight: 600; color: rgba(255, 255, 255, .68); }
+  .summary-meta b { font-size: 14.5px; font-variant-numeric: tabular-nums; }
+
+  .payer-list { margin-top: 12px; max-height: 190px; overflow-y: auto; }
+  .payer-list:empty { display: none; }
+  .payer-row {
+    display: flex; justify-content: space-between; gap: 12px;
+    padding: 6px 0; font-size: 13.5px; border-bottom: 1px dashed rgba(255, 255, 255, .16);
+  }
+  .payer-row:last-child { border-bottom: 0; }
+  .payer-row b { font-variant-numeric: tabular-nums; }
+  .payer-row .free { color: rgba(255, 255, 255, .58); text-decoration: line-through; }
+
+  .sum-divider { height: 1px; margin: 14px 0 12px; background: rgba(255, 255, 255, .2); }
+  .sum-field {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    margin-top: 9px; font-size: 12.5px; font-weight: 700; color: rgba(255, 255, 255, .78);
+  }
+  .sum-field select, .sum-field input {
+    width: auto; min-width: 148px; height: 38px; font-size: 13px;
+    border: 1px solid rgba(255, 255, 255, .3); background: rgba(255, 255, 255, .13);
+    color: #fff; border-radius: 9px; padding: 0 10px;
+  }
+  .sum-field select option { color: var(--ink); background: #fff; }
+  .sum-field input[type=date] { color-scheme: dark; }
+  .sum-field select:focus, .sum-field input:focus { outline: none; border-color: rgba(255, 255, 255, .7); }
+
+  /* ---------- members ---------- */
+  .member-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 4px; border-bottom: 1px solid var(--line);
+  }
+  .member-row:last-child { border-bottom: 0; }
+  .avatar {
+    flex: none; width: 34px; height: 34px; border-radius: 50%;
+    background: var(--green-soft); color: var(--green-600);
+    display: grid; place-items: center; font-weight: 800; font-size: 14px;
+  }
+  .member-row .name { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* ---------- history ---------- */
+  .hist {
+    margin-top: 12px; padding: 14px 16px;
+    border: 1px solid var(--line); border-radius: 14px; background: #fbfcfb;
+  }
+  .hist-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+  .hist-date { font-size: 15px; font-weight: 800; }
+  .hist-sub { margin-top: 2px; font-size: 12.5px; color: var(--muted); }
+  .hist-per { text-align: right; flex: none; }
+  .hist-per span { display: block; font-size: 11px; font-weight: 600; color: var(--muted); }
+  .hist-per b { font-size: 20px; font-weight: 800; color: var(--green-600); font-variant-numeric: tabular-nums; }
+  .hist-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .mini {
+    height: 32px; padding: 0 11px; border: 1px solid var(--line); border-radius: 8px;
+    background: #fff; color: var(--ink); font-size: 12.5px; font-weight: 700; cursor: pointer;
+  }
+  .mini:hover { background: #f2f6f2; }
+  .mini.danger { color: #b3261e; }
+  .mini.danger:hover { background: #fdecea; border-color: #f2c8c4; }
+  .hist-detail { margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--line); }
+  .kv { display: flex; justify-content: space-between; gap: 14px; padding: 4px 0; font-size: 13.5px; color: var(--muted); }
+  .kv b { color: var(--ink); font-variant-numeric: tabular-nums; }
+  .kv small { color: var(--muted); font-weight: 500; }
+  .hist-people { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .chip {
+    padding: 4px 9px; border-radius: 999px; background: var(--green-soft);
+    color: var(--green-600); font-size: 12px; font-weight: 700;
+  }
+  .chip.free { background: var(--amber-soft); color: var(--amber); }
+
+  /* ---------- toast ---------- */
+  .toast {
+    position: fixed; left: 50%; bottom: 26px; z-index: 100;
+    transform: translate(-50%, 14px); opacity: 0; pointer-events: none;
+    max-width: min(90vw, 420px); padding: 10px 16px; border-radius: 10px;
+    background: #16221b; color: #fff; font-size: 13.5px; font-weight: 600;
+    box-shadow: 0 12px 30px -12px rgba(0, 0, 0, .45);
+    transition: opacity .22s, transform .22s;
+  }
+  .toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+  @media (max-width: 880px) {
+    .layout { grid-template-columns: 1fr; }
+    .summary { position: static; }
+    .att-list { max-height: none; }
+    .per-person b { font-size: 42px; }
+  }
+  @media (max-width: 560px) {
+    main { padding: 16px 14px 64px; }
+    .topbar-inner { padding: 9px 14px; gap: 10px; }
+    .tabs { width: 100%; margin-left: 0; }
+    .tab { flex: 1; justify-content: center; padding: 7px 8px; }
+    .card { padding: 16px; border-radius: 16px; }
+    .field-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">
+      <span class="logo" aria-hidden="true">🏸</span>
+      <div>
+        <h1>羽球社分帳</h1>
+        <p>填本週總數，自動算出每人要付多少</p>
+      </div>
+    </div>
+    <nav class="tabs" aria-label="頁面切換">
+      <button type="button" class="tab active" data-tab="week">本週分帳</button>
+      <button type="button" class="tab" data-tab="members">社員名單</button>
+      <button type="button" class="tab" data-tab="history">歷史紀錄<span class="badge" id="histCount"></span></button>
+    </nav>
+  </div>
+</header>
+
+<main>
+<section class="panel active" id="panel-week">
+  <div class="layout">
+    <div class="stack">
+
+      <div class="card">
+        <div class="card-head">
+          <h2>本週費用</h2>
+          <span class="hint-inline">填這週的總數就好</span>
+        </div>
+        <div class="field-grid">
+          <label class="field">
+            <span>場地費總額</span>
+            <span class="money"><i>NT$</i><input id="venue" type="number" min="0" step="any" inputmode="decimal" placeholder="0"></span>
+          </label>
+          <label class="field">
+            <span>雜費（飲料、停車…）</span>
+            <span class="money"><i>NT$</i><input id="misc" type="number" min="0" step="any" inputmode="decimal" placeholder="0"></span>
+          </label>
+          <label class="field">
+            <span>每顆球單價</span>
+            <span class="money"><i>NT$</i><input id="unit" type="number" min="0" step="any" inputmode="decimal" placeholder="0"></span>
+          </label>
+          <label class="field">
+            <span>本週用球數（顆）</span>
+            <input id="count" type="number" min="0" step="any" inputmode="decimal" placeholder="0">
+          </label>
+        </div>
+
+        <div class="cost-lines">
+          <div><span>場地費</span><b id="lineVenue">NT$0</b></div>
+          <div><span>球費 <small id="lineShuttleHint"></small></span><b id="lineShuttle">NT$0</b></div>
+          <div><span>雜費</span><b id="lineMisc">NT$0</b></div>
+          <div class="cost-total"><span>本週總費用</span><b id="lineTotal">NT$0</b></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <h2>出席人員</h2>
+          <span class="pill" id="attCount">0 人出席</span>
+        </div>
+        <p class="hint">勾選這週有來的人。第一次來的人勾「首次」，這週免費，費用由其他人平均分攤。</p>
+        <div class="att-list" id="attList"></div>
+        <div class="add-row">
+          <input id="quickName" placeholder="輸入名字（社員或臨打）" autocomplete="off">
+          <button type="button" class="btn ghost" id="quickAdd">＋ 新增社員</button>
+          <button type="button" class="btn ghost" id="guestAdd">＋ 臨打</button>
+        </div>
+      </div>
+
+    </div>
+
+    <aside class="stack">
+      <div class="card summary">
+        <div class="summary-label">這週每人應付</div>
+        <div class="per-person">
+          <span id="perCur">NT$</span><b id="perPerson" aria-live="polite">—</b>
+        </div>
+        <div class="sum-note" id="sumNote"></div>
+
+        <div class="summary-meta">
+          <div><span>總費用</span><b id="sumTotal">NT$0</b></div>
+          <div><span>分攤人數</span><b id="sumPayers">0 人</b></div>
+          <div><span>首次免費</span><b id="sumFree">0 人</b></div>
+        </div>
+
+        <div class="payer-list" id="payerList"></div>
+
+        <div class="sum-divider"></div>
+
+        <label class="sum-field">
+          <span>收費取整</span>
+          <select id="rounding">
+            <option value="int">進位到整數</option>
+            <option value="five">進位到 5 元</option>
+            <option value="ten">進位到 10 元</option>
+            <option value="none">不取整（顯示小數）</option>
+          </select>
+        </label>
+
+        <label class="sum-field">
+          <span>紀錄日期</span>
+          <input type="date" id="weekDate">
+        </label>
+
+        <button type="button" class="btn on-green" id="saveWeek">儲存本週紀錄</button>
+        <button type="button" class="btn text" id="resetWeek">清除本週輸入</button>
+      </div>
+    </aside>
+  </div>
+</section>
+<section class="panel" id="panel-members">
+  <div class="narrow">
+    <div class="card">
+      <div class="card-head">
+        <h2>社員名單</h2>
+        <span class="pill" id="memberCount">0 人</span>
+      </div>
+      <p class="hint">這裡是固定班底。加入後會出現在「本週分帳」，勾選就代表這週出席。</p>
+      <div class="add-row">
+        <input id="newMember" placeholder="新增社員姓名…" autocomplete="off">
+        <button type="button" class="btn primary" id="addMemberBtn">新增</button>
+      </div>
+      <div id="memberList" style="margin-top:14px"></div>
+    </div>
+  </div>
+</section>
+
+<section class="panel" id="panel-history">
+  <div class="card">
+    <div class="card-head">
+      <h2>歷史紀錄</h2>
+      <span class="hint-inline">存在這台電腦的瀏覽器</span>
+    </div>
+    <p class="hint">每一週存一筆。之後可以回來查每人付多少，或直接複製摘要貼到群組。</p>
+    <div id="historyList"></div>
+  </div>
+</section>
+</main>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<script>
+(function () {
+  'use strict';
+
+  var KEY = 'badminton-split-v1';
+  var CHECK = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12.5l5 5L20 6.5"/></svg>';
+
+  function $(sel, root) { return (root || document).querySelector(sel); }
+  function $$(sel, root) { return Array.prototype.slice.call((root || document).querySelectorAll(sel)); }
+  function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+  function fmt(n) {
+    var v = Number(n) || 0;
+    return (Math.round(v * 100) / 100).toLocaleString('zh-TW', { maximumFractionDigits: 2 });
+  }
+  function money(n) { return 'NT$' + fmt(n); }
+  function num(v) {
+    var n = parseFloat(v);
+    return (isFinite(n) && n > 0) ? n : 0;
+  }
+  function todayStr() {
+    var d = new Date();
+    var p = function (n) { return String(n).padStart(2, '0'); };
+    return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
+  }
+  function niceDate(str) {
+    if (!str) return '未指定日期';
+    var p = String(str).split('-');
+    if (p.length !== 3) return String(str);
+    var y = +p[0], m = +p[1], d = +p[2];
+    var dt = new Date(y, m - 1, d);
+    if (isNaN(dt.getTime())) return String(str);
+    return y + '/' + m + '/' + d + '（' + '日一二三四五六'[dt.getDay()] + '）';
+  }
+
+  /* ---------------- storage ---------------- */
+  var DEFAULT_COSTS = { venue: '', unit: '', count: '', misc: '' };
+
+  function loadDB() {
+    var base = {
+      members: [], attendance: {}, guests: [],
+      costs: { venue: '', unit: '', count: '', misc: '' },
+      rounding: 'int', weeks: [], weekDate: ''
+    };
+    var saved = null;
+    try { saved = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) { saved = null; }
+    if (!saved || typeof saved !== 'object') return base;
+
+    var db = base;
+    db.members = (saved.members || []).filter(function (m) { return m && m.id && typeof m.name === 'string'; });
+    db.guests = (saved.guests || []).filter(function (g) { return g && g.id; });
+    db.weeks = Array.isArray(saved.weeks) ? saved.weeks : [];
+    db.attendance = (saved.attendance && typeof saved.attendance === 'object') ? saved.attendance : {};
+    db.costs = {
+      venue: pick(saved.costs && saved.costs.venue),
+      unit: pick(saved.costs && saved.costs.unit),
+      count: pick(saved.costs && saved.costs.count),
+      misc: pick(saved.costs && saved.costs.misc)
+    };
+    db.rounding = ['int', 'five', 'ten', 'none'].indexOf(saved.rounding) >= 0 ? saved.rounding : 'int';
+    db.weekDate = typeof saved.weekDate === 'string' ? saved.weekDate : '';
+    return db;
+  }
+  function pick(v) { return (v === 0 || v) ? v : ''; }
+
+  var db = loadDB();
+  var warned = false;
+
+  function saveDB() {
+    try { localStorage.setItem(KEY, JSON.stringify(db)); }
+    catch (e) {
+      if (!warned) { warned = true; toast('瀏覽器無法儲存，關掉頁面後資料會消失'); }
+    }
+  }
+
+  function att(id) {
+    if (!db.attendance[id]) db.attendance[id] = { present: false, isNew: false };
+    return db.attendance[id];
+  }
+
+  /* ---------------- calculation ---------------- */
+  function getAttendees() {
+    var list = [];
+    db.members.forEach(function (m) {
+      var a = db.attendance[m.id];
+      if (a && a.present) {
+        list.push({ key: 'm:' + m.id, id: m.id, name: m.name, type: 'member', isNew: !!a.isNew });
+      }
+    });
+    db.guests.forEach(function (g) {
+      list.push({ key: 'g:' + g.id, id: g.id, name: g.name, type: 'guest', isNew: !!g.isNew });
+    });
+    return list;
+  }
+
+  function roundPer(exact) {
+    if (!exact) return 0;
+    if (db.rounding === 'none') return Math.round(exact * 100) / 100;
+    var step = db.rounding === 'five' ? 5 : db.rounding === 'ten' ? 10 : 1;
+    return Math.ceil(exact / step - 1e-9) * step;
+  }
+
+  function compute() {
+    var venue = num(db.costs.venue);
+    var unit = num(db.costs.unit);
+    var qty = num(db.costs.count);
+    var misc = num(db.costs.misc);
+    var shuttle = unit * qty;
+    var total = venue + shuttle + misc;
+    var attendees = getAttendees();
+    var payers = attendees.filter(function (a) { return !a.isNew; });
+    var freebies = attendees.filter(function (a) { return a.isNew; });
+    var exact = payers.length ? total / payers.length : 0;
+    var per = roundPer(exact);
+    return {
+      venue: venue, unit: unit, qty: qty, shuttle: shuttle, misc: misc, total: total,
+      attendees: attendees, payers: payers, freebies: freebies,
+      exact: exact, per: per, collected: per * payers.length
+    };
+  }
+  /* ---------------- render: attendance ---------------- */
+  function rowHTML(a) {
+    var tick = a.type === 'guest'
+      ? '<span class="tick static" aria-hidden="true">' + CHECK + '</span>'
+      : '<button type="button" class="tick" role="switch" aria-checked="' + a.present + '" aria-label="切換出席">' + CHECK + '</button>';
+    return '<div class="att-row' + (a.present ? ' on' : '') + '" data-key="' + a.key + '">' +
+      tick +
+      '<span class="name">' + esc(a.name) + '</span>' +
+      (a.type === 'guest' ? '<span class="tag guest">臨打</span>' : '') +
+      (a.isNew ? '<span class="tag free">首次免費</span>' : '') +
+      '<span class="grow"></span>' +
+      '<label class="first-toggle">' +
+        '<input type="checkbox" data-first ' + (a.isNew ? 'checked ' : '') + (a.present ? '' : 'disabled') + '>' +
+        '<span>首次</span>' +
+      '</label>' +
+      (a.type === 'guest' ? '<button type="button" class="icon-btn" data-remove aria-label="移除臨打">✕</button>' : '') +
+      '</div>';
+  }
+
+  function renderAttendance() {
+    var wrap = $('#attList');
+    var present = db.members.filter(function (m) { return db.attendance[m.id] && db.attendance[m.id].present; }).length;
+    $('#attCount').textContent = (present + db.guests.length) + ' 人出席';
+
+    if (!db.members.length && !db.guests.length) {
+      wrap.innerHTML = '<div class="empty">還沒有社員。<br>在下面輸入名字新增，或到「社員名單」建立固定班底。</div>';
+      return;
+    }
+
+    var rows = [];
+    db.members.forEach(function (m) {
+      var a = att(m.id);
+      rows.push(rowHTML({ key: 'm:' + m.id, name: m.name, type: 'member', present: !!a.present, isNew: !!a.isNew }));
+    });
+    db.guests.forEach(function (g) {
+      rows.push(rowHTML({ key: 'g:' + g.id, name: g.name, type: 'guest', present: true, isNew: !!g.isNew }));
+    });
+    wrap.innerHTML = rows.join('');
+  }
+
+  /* ---------------- render: summary ---------------- */
+  function renderSummary() {
+    var s = compute();
+
+    $('#lineVenue').textContent = money(s.venue);
+    $('#lineShuttle').textContent = money(s.shuttle);
+    $('#lineShuttleHint').textContent = (s.unit && s.qty) ? '（' + fmt(s.unit) + ' × ' + fmt(s.qty) + ' 顆）' : '';
+    $('#lineMisc').textContent = money(s.misc);
+    $('#lineTotal').textContent = money(s.total);
+
+    $('#sumTotal').textContent = money(s.total);
+    $('#sumPayers').textContent = s.payers.length + ' 人';
+    $('#sumFree').textContent = s.freebies.length + ' 人';
+
+    var big = $('#perPerson');
+    var notes = [];
+
+    if (!s.attendees.length) {
+      big.textContent = '—';
+      notes.push('先勾選這週出席的人');
+    } else if (!s.payers.length) {
+      big.textContent = '—';
+      notes.push('出席的人都是首次免費，沒有可分攤的人');
+    } else {
+      big.textContent = fmt(s.per);
+      if (db.rounding !== 'none' && Math.abs(s.per - s.exact) > 0.004) {
+        notes.push('未取整每人 ' + fmt(s.exact));
+      }
+      if (db.rounding === 'none' && !Number.isInteger(s.per)) {
+        notes.push('有小數，可用「收費取整」');
+      }
+      var diff = s.collected - s.total;
+      if (diff > 0.004) notes.push('實收 ' + money(s.collected) + '，多收 ' + money(diff));
+    }
+    $('#sumNote').textContent = notes.join(' · ');
+    $('#perCur').style.visibility = (s.attendees.length && s.payers.length) ? 'visible' : 'hidden';
+
+    $('#payerList').innerHTML = s.attendees.map(function (a) {
+      if (a.isNew) {
+        return '<div class="payer-row"><span class="free">' + esc(a.name) + '</span><span class="free">首次免費</span></div>';
+      }
+      return '<div class="payer-row"><span>' + esc(a.name) + '</span><b>' + money(s.per) + '</b></div>';
+    }).join('');
+
+    $('#saveWeek').disabled = !s.payers.length;
+  }
+  /* ---------------- render: members ---------------- */
+  function renderMembers() {
+    $('#memberCount').textContent = db.members.length + ' 人';
+    var wrap = $('#memberList');
+    if (!db.members.length) {
+      wrap.innerHTML = '<div class="empty">名單還是空的，先新增幾個固定班底吧。</div>';
+      return;
+    }
+    wrap.innerHTML = db.members.map(function (m) {
+      var ch = m.name.trim().slice(0, 1) || '?';
+      return '<div class="member-row" data-id="' + m.id + '">' +
+        '<span class="avatar" aria-hidden="true">' + esc(ch) + '</span>' +
+        '<span class="name">' + esc(m.name) + '</span>' +
+        '<span class="grow"></span>' +
+        '<button type="button" class="mini" data-rename>改名</button>' +
+        '<button type="button" class="mini danger" data-del>刪除</button>' +
+        '</div>';
+    }).join('');
+  }
+
+  /* ---------------- render: history ---------------- */
+  var openHist = {};
+
+  function kv(label, value) {
+    return '<div class="kv"><span>' + label + '</span><b>' + value + '</b></div>';
+  }
+
+  function histHTML(w) {
+    var open = !!openHist[w.id];
+    var people = (w.attendees || []).map(function (a) {
+      return a.isNew
+        ? '<span class="chip free">' + esc(a.name) + ' · 首次免費</span>'
+        : '<span class="chip">' + esc(a.name) + '</span>';
+    }).join('');
+
+    var detail = open ? '<div class="hist-detail">' +
+      kv('場地費', money(w.venue)) +
+      kv('球費', money(w.shuttle) + ((w.unit && w.qty) ? ' <small>' + fmt(w.unit) + ' × ' + fmt(w.qty) + ' 顆</small>' : '')) +
+      kv('雜費', money(w.misc)) +
+      kv('總費用', money(w.total)) +
+      kv('分攤', w.payers + ' 人 × ' + money(w.per)) +
+      '<div class="hist-people">' + people + '</div>' +
+      '</div>' : '';
+
+    return '<article class="hist" data-id="' + w.id + '">' +
+      '<div class="hist-head">' +
+        '<div><div class="hist-date">' + esc(niceDate(w.date)) + '</div>' +
+        '<div class="hist-sub">出席 ' + (w.attendees || []).length + ' 人 · 總費用 ' + money(w.total) + '</div></div>' +
+        '<div class="hist-per"><span>每人</span><b>' + money(w.per) + '</b></div>' +
+      '</div>' +
+      '<div class="hist-actions">' +
+        '<button type="button" class="mini" data-toggle>' + (open ? '收起明細' : '查看明細') + '</button>' +
+        '<button type="button" class="mini" data-copy>複製摘要</button>' +
+        '<button type="button" class="mini danger" data-del>刪除</button>' +
+      '</div>' +
+      detail +
+      '</article>';
+  }
+
+  function renderHistory() {
+    $('#histCount').textContent = db.weeks.length ? String(db.weeks.length) : '';
+    var wrap = $('#historyList');
+    if (!db.weeks.length) {
+      wrap.innerHTML = '<div class="empty">還沒有紀錄。填好本週數字後按「儲存本週紀錄」，就會出現在這裡。</div>';
+      return;
+    }
+    wrap.innerHTML = db.weeks.map(histHTML).join('');
+  }
+
+  function renderAll() {
+    renderAttendance();
+    renderSummary();
+    renderMembers();
+    renderHistory();
+  }
+  /* ---------------- toast ---------------- */
+  var toastTimer = null;
+  function toast(msg) {
+    var el = $('#toast');
+    el.textContent = msg;
+    el.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { el.classList.remove('show'); }, 2400);
+  }
+
+  function showTab(name) {
+    $$('.tab').forEach(function (b) { b.classList.toggle('active', b.dataset.tab === name); });
+    $$('.panel').forEach(function (p) { p.classList.toggle('active', p.id === 'panel-' + name); });
+    window.scrollTo(0, 0);
+  }
+
+  function paintInputs() {
+    $('#venue').value = db.costs.venue;
+    $('#unit').value = db.costs.unit;
+    $('#count').value = db.costs.count;
+    $('#misc').value = db.costs.misc;
+    $('#rounding').value = db.rounding;
+    $('#weekDate').value = db.weekDate || todayStr();
+  }
+
+  /* ---------------- attendance actions ---------------- */
+  function togglePresent(key) {
+    if (key.indexOf('m:') !== 0) return;
+    var id = key.slice(2);
+    var a = att(id);
+    a.present = !a.present;
+    if (!a.present) a.isNew = false;
+    saveDB();
+    renderAttendance();
+    renderSummary();
+  }
+
+  function setFirst(key, val) {
+    var id = key.slice(2);
+    if (key.indexOf('m:') === 0) {
+      att(id).isNew = val;
+    } else {
+      var g = db.guests.filter(function (x) { return x.id === id; })[0];
+      if (g) g.isNew = val;
+    }
+    saveDB();
+    renderAttendance();
+    renderSummary();
+  }
+
+  function removeGuest(key) {
+    var id = key.slice(2);
+    db.guests = db.guests.filter(function (g) { return g.id !== id; });
+    saveDB();
+    renderAttendance();
+    renderSummary();
+    toast('已移除臨打');
+  }
+
+  function quickAddMember() {
+    var name = $('#quickName').value.trim();
+    if (!name) { toast('先輸入名字'); return; }
+    if (db.members.some(function (m) { return m.name === name; })) { toast('名單裡已經有「' + name + '」'); return; }
+    var m = { id: uid(), name: name };
+    db.members.push(m);
+    att(m.id).present = true;
+    att(m.id).isNew = true;
+    $('#quickName').value = '';
+    saveDB();
+    renderAll();
+    toast('已加入「' + name + '」，這週標記為首次免費');
+  }
+
+  function addGuest() {
+    var typed = $('#quickName').value.trim();
+    var name = typed || ('臨打 ' + (db.guests.length + 1));
+    db.guests.push({ id: uid(), name: name, isNew: false });
+    $('#quickName').value = '';
+    saveDB();
+    renderAttendance();
+    renderSummary();
+    toast('已加入臨打「' + name + '」');
+  }
+
+  function addRosterMember() {
+    var input = $('#newMember');
+    var name = input.value.trim();
+    if (!name) { toast('先輸入名字'); return; }
+    if (db.members.some(function (m) { return m.name === name; })) { toast('名單裡已經有「' + name + '」'); return; }
+    db.members.push({ id: uid(), name: name });
+    input.value = '';
+    saveDB();
+    renderAll();
+    toast('已新增社員「' + name + '」');
+  }
+  /* ---------------- save / reset ---------------- */
+  function sigOf(w) {
+    return JSON.stringify([
+      w.date, w.total, w.per,
+      (w.attendees || []).map(function (a) { return a.name + (a.isNew ? '*' : ''); })
+    ]);
+  }
+
+  function saveWeek() {
+    var s = compute();
+    if (!s.attendees.length) { toast('這週還沒有人出席'); return; }
+    if (!s.payers.length) { toast('所有人都是首次免費，沒有可分攤的人'); return; }
+
+    var date = db.weekDate || todayStr();
+    var rec = {
+      id: uid(),
+      date: date,
+      venue: s.venue, unit: s.unit, qty: s.qty, shuttle: s.shuttle, misc: s.misc, total: s.total,
+      attendees: s.attendees.map(function (a) { return { name: a.name, type: a.type, isNew: a.isNew }; }),
+      payers: s.payers.length,
+      freebies: s.freebies.length,
+      per: s.per,
+      exact: s.exact,
+      collected: s.collected,
+      rounding: db.rounding,
+      savedAt: Date.now()
+    };
+
+    var sig = sigOf(rec);
+    var idx = -1;
+    for (var i = 0; i < db.weeks.length; i++) {
+      if (db.weeks[i].date === date && sigOf(db.weeks[i]) === sig) { idx = i; break; }
+    }
+    if (idx >= 0) {
+      rec.id = db.weeks[idx].id;
+      db.weeks[idx] = rec;
+      toast('已更新這天的紀錄');
+    } else {
+      db.weeks.unshift(rec);
+      toast('已儲存本週紀錄');
+    }
+    if (!db.weekDate) db.weekDate = date;
+    saveDB();
+    renderHistory();
+  }
+
+  function resetWeek() {
+    if (!confirm('清除本週填的費用、出席與臨打？（已儲存的歷史紀錄不受影響）')) return;
+    db.costs = { venue: '', unit: '', count: '', misc: '' };
+    db.guests = [];
+    db.members.forEach(function (m) {
+      var a = att(m.id);
+      a.present = false;
+      a.isNew = false;
+    });
+    db.weekDate = todayStr();
+    saveDB();
+    paintInputs();
+    renderAll();
+    toast('已清空，可以開始新的一週');
+  }
+
+  /* ---------------- copy summary ---------------- */
+  function summaryText(w) {
+    var lines = [];
+    lines.push('🏸 羽球社分帳 ' + niceDate(w.date));
+    lines.push('場地費：' + money(w.venue));
+    if (w.unit && w.qty) lines.push('球費：' + money(w.shuttle) + '（NT$' + fmt(w.unit) + ' × ' + fmt(w.qty) + ' 顆）');
+    else lines.push('球費：' + money(w.shuttle));
+    lines.push('雜費：' + money(w.misc));
+    lines.push('────────');
+    lines.push('總費用：' + money(w.total));
+    lines.push('出席：' + (w.attendees || []).length + ' 人（首次免費 ' + w.freebies + ' 人，實際分攤 ' + w.payers + ' 人）');
+    lines.push('每人應付：' + money(w.per));
+    var free = (w.attendees || []).filter(function (a) { return a.isNew; });
+    if (free.length) lines.push('首次免費：' + free.map(function (a) { return a.name; }).join('、'));
+    return lines.join('\n');
+  }
+
+  function legacyCopy(text, done) {
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    ta.setAttribute('readonly', '');
+    ta.style.position = 'fixed';
+    ta.style.top = '-1000px';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    var ok = false;
+    try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+    document.body.removeChild(ta);
+    if (ok) done(); else toast('複製失敗，請手動選取');
+  }
+
+  function copyText(text) {
+    var done = function () { toast('已複製，可以貼到群組了'); };
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(text).then(done, function () { legacyCopy(text, done); });
+    } else {
+      legacyCopy(text, done);
+    }
+  }
+  /* ---------------- events ---------------- */
+  function bind() {
+    $$('.tab').forEach(function (b) {
+      b.addEventListener('click', function () { showTab(b.dataset.tab); });
+    });
+
+    var costInputs = { venue: 'venue', unit: 'unit', count: 'count', misc: 'misc' };
+    Object.keys(costInputs).forEach(function (key) {
+      var el = $('#' + costInputs[key]);
+      el.addEventListener('input', function () {
+        db.costs[key] = el.value;
+        saveDB();
+        renderSummary();
+      });
+    });
+
+    $('#rounding').addEventListener('change', function (e) {
+      db.rounding = e.target.value;
+      saveDB();
+      renderSummary();
+    });
+
+    $('#weekDate').addEventListener('change', function (e) {
+      db.weekDate = e.target.value;
+      saveDB();
+    });
+
+    $('#attList').addEventListener('click', function (e) {
+      var row = e.target.closest('.att-row');
+      if (!row) return;
+      if (e.target.closest('[data-remove]')) { removeGuest(row.dataset.key); return; }
+      if (e.target.closest('.first-toggle')) return;
+      if (e.target.closest('.tick.static')) return;
+      if (e.target.closest('.tick') || e.target.closest('.name')) togglePresent(row.dataset.key);
+    });
+
+    $('#attList').addEventListener('change', function (e) {
+      if (!e.target.matches('[data-first]')) return;
+      var row = e.target.closest('.att-row');
+      if (row) setFirst(row.dataset.key, e.target.checked);
+    });
+
+    $('#quickAdd').addEventListener('click', quickAddMember);
+    $('#guestAdd').addEventListener('click', addGuest);
+    $('#quickName').addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') { e.preventDefault(); quickAddMember(); }
+    });
+
+    $('#addMemberBtn').addEventListener('click', addRosterMember);
+    $('#newMember').addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') { e.preventDefault(); addRosterMember(); }
+    });
+
+    $('#memberList').addEventListener('click', function (e) {
+      var row = e.target.closest('.member-row');
+      if (!row) return;
+      var id = row.dataset.id;
+      var m = db.members.filter(function (x) { return x.id === id; })[0];
+      if (!m) return;
+
+      if (e.target.closest('[data-del]')) {
+        if (!confirm('從名單刪除「' + m.name + '」？歷史紀錄不會受影響。')) return;
+        db.members = db.members.filter(function (x) { return x.id !== id; });
+        delete db.attendance[id];
+        saveDB();
+        renderAll();
+        toast('已刪除「' + m.name + '」');
+      } else if (e.target.closest('[data-rename]')) {
+        var name = prompt('新的名字', m.name);
+        if (name === null) return;
+        var t = name.trim();
+        if (!t) { toast('名字不能空白'); return; }
+        m.name = t;
+        saveDB();
+        renderAll();
+        toast('已改名為「' + t + '」');
+      }
+    });
+
+    $('#historyList').addEventListener('click', function (e) {
+      var card = e.target.closest('.hist');
+      if (!card) return;
+      var id = card.dataset.id;
+      var w = db.weeks.filter(function (x) { return x.id === id; })[0];
+      if (!w) return;
+
+      if (e.target.closest('[data-toggle]')) {
+        openHist[id] = !openHist[id];
+        renderHistory();
+      } else if (e.target.closest('[data-copy]')) {
+        copyText(summaryText(w));
+      } else if (e.target.closest('[data-del]')) {
+        if (!confirm('刪除 ' + niceDate(w.date) + ' 的紀錄？')) return;
+        db.weeks = db.weeks.filter(function (x) { return x.id !== id; });
+        delete openHist[id];
+        saveDB();
+        renderHistory();
+        toast('已刪除紀錄');
+      }
+    });
+
+    $('#saveWeek').addEventListener('click', saveWeek);
+    $('#resetWeek').addEventListener('click', resetWeek);
+  }
+
+  /* ---------------- init ---------------- */
+  if (!db.weekDate) db.weekDate = todayStr();
+  paintInputs();
+  bind();
+  renderAll();
+})();
+</script>
+</body>
+</html>
