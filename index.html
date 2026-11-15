@@ -331,6 +331,80 @@
     .field-grid { grid-template-columns: 1fr; }
   }
 </style>
+<style>
+  :root {
+    --bg: #fff8f2;
+    --card: #fffdfb;
+    --ink: #35244c;
+    --muted: #6c587b;
+    --line: #eadced;
+    --green: #7346a1;
+    --green-600: #5d3286;
+    --green-soft: #f1e6fb;
+    --amber-soft: #ffe8c9;
+    --amber: #774214;
+    --radius: 24px;
+    --shadow: 0 6px 0 #f3e6eb, 0 14px 30px -22px #825c9b;
+  }
+  body {
+    background: radial-gradient(ellipse at 6% 0%, #ffe5df 0, transparent 34rem),
+                radial-gradient(ellipse at 96% 12%, #eee2ff 0, transparent 35rem),
+                var(--bg);
+    font-family: Nunito, "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif;
+  }
+  .topbar { background: rgba(255, 250, 246, .94); }
+  .topbar-inner { padding-block: 16px; }
+  .brand { gap: 13px; }
+  .logo {
+    display: grid; place-items: center; width: 52px; height: 52px;
+    flex: none; border: 1px solid #e6cdec; border-radius: 18px;
+    background: #f1e0fa; box-shadow: 0 3px 0 #e7d0ed;
+  }
+  .brand h1 { font-size: clamp(21px, 4vw, 26px); letter-spacing: .015em; }
+  .brand p { font-size: 13px; }
+  .tabs { background: #f3e7f6; border: 1px solid #ebdaef; border-radius: 18px; }
+  .tab { min-height: 44px; border-radius: 13px; }
+  .tab.active { color: #5d3286; box-shadow: 0 2px 4px #e5d4ed; }
+  main { padding-top: 30px; }
+  .layout, .stack { gap: 24px; }
+  .card h2 { font-size: 19px; }
+  .field { font-size: 14px; }
+  .field input, .add-row input { background: #fff8f9; border-radius: 14px; }
+  .field input:hover, .btn.ghost:hover { border-color: #cbaedc; }
+  .field input:focus, .add-row input:focus {
+    box-shadow: 0 0 0 3px #eee0f8;
+  }
+  .field input::placeholder { color: #826e89; }
+  .att-row, .empty { background: #fcf6fa; border-color: #f1e5ef; }
+  .att-row:hover, .btn.ghost:hover { background: #f9effa; }
+  .att-row.on { border-color: #e3cff3; }
+  .att-row.on:hover, .btn.on-green:hover { background: #efe1fa; }
+  .tick { border-color: #b59ac6; }
+  .btn, .mini { border-radius: 14px; }
+  .summary {
+    background: radial-gradient(circle at 92% 5%, #9260be, transparent 12rem),
+                linear-gradient(160deg, #7747a6, #59317e 64%, #452362);
+    top: 108px;
+    box-shadow: 0 7px 0 #e9d9f4, 0 20px 36px -22px #67348b;
+  }
+  .summary-label { font-size: 14px; color: #fff1fc; }
+  .summary-meta span, .sum-note, .btn.text { color: #f6eafc; }
+  .per-person b { font-size: clamp(38px, 6vw, 53px); }
+  .summary-meta { border-top-style: dashed; }
+  @media (max-width: 640px) {
+    .topbar-inner { padding-block: 10px; }
+    .logo { width: 43px; height: 43px; border-radius: 14px; font-size: 22px; }
+    main { padding-top: 18px; }
+    .layout, .stack { gap: 18px; }
+    .card { border-radius: 21px; }
+    .add-row input, .sum-field input, .sum-field select { font-size: 16px; }
+  }
+  @media (pointer: coarse) {
+    .tick, .icon-btn { min-width: 44px; min-height: 44px; }
+    .btn.text, .mini { min-height: 44px; }
+    .first-toggle { min-height: 44px; }
+  }
+</style>
 </head>
 <body>
 <header class="topbar">
