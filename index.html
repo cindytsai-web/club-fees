@@ -404,6 +404,38 @@
     .btn.text, .mini { min-height: 44px; }
     .first-toggle { min-height: 44px; }
   }
+  /* ---------- cloud status ---------- */
+  .cloud-chip {
+    display: inline-flex; align-items: center; gap: 7px;
+    margin-left: 8px; padding: 7px 13px;
+    border: 1px solid var(--line); border-radius: 999px;
+    background: var(--card); font: inherit; font-size: 13px; font-weight: 700;
+    color: var(--muted); cursor: pointer; white-space: nowrap;
+    transition: border-color .15s ease, color .15s ease;
+  }
+  .cloud-chip:hover { border-color: #d8c3e6; }
+  .cloud-chip .dot { width: 8px; height: 8px; border-radius: 50%; background: #c9b8d4; flex: none; }
+  .cloud-chip[data-state="ok"] { color: var(--green); }
+  .cloud-chip[data-state="ok"] .dot { background: #2fae6a; }
+  .cloud-chip[data-state="need"] { color: #9a6a12; }
+  .cloud-chip[data-state="need"] .dot { background: #e2a33c; }
+  .cloud-chip[data-state="err"] { color: #b43737; }
+  .cloud-chip[data-state="err"] .dot { background: #d94848; }
+  .cloud-chip[data-state="busy"] .dot { background: #8f7fb0; animation: pulse 1s infinite alternate; }
+  @keyframes pulse { from { opacity: .3; } to { opacity: 1; } }
+  .cloud-note { margin: 0 0 14px; padding: 10px 13px; border-radius: 14px; background: var(--green-soft); color: var(--green); font-size: 13px; line-height: 1.6; }
+  .cloud-note.warn { background: var(--amber-soft); color: var(--amber); }
+
+  /* ---------- pin modal ---------- */
+  .modal { position: fixed; inset: 0; display: none; place-items: center; padding: 20px; background: rgba(53, 36, 76, .42); z-index: 60; }
+  .modal.open { display: grid; }
+  .modal-card { width: min(380px, 100%); padding: 24px; background: var(--card); border-radius: 22px; box-shadow: 0 24px 60px -24px rgba(53, 36, 76, .55); }
+  .modal-card h3 { margin: 0 0 6px; font-size: 18px; }
+  .modal-card p { margin: 0 0 16px; font-size: 14px; line-height: 1.65; color: var(--muted); }
+  .modal-card input { width: 100%; padding: 12px 14px; border: 1px solid var(--line); border-radius: 14px; background: #fff; font: inherit; font-size: 16px; }
+  .modal-card .err { margin: 10px 0 0; color: #b43737; font-size: 13px; min-height: 18px; }
+  .modal-actions { display: flex; gap: 10px; margin-top: 16px; }
+  .modal-actions .btn { flex: 1; }
 </style>
 </head>
 <body>
@@ -421,6 +453,9 @@
       <button type="button" class="tab" data-tab="members">社員名單</button>
       <button type="button" class="tab" data-tab="history">歷史紀錄<span class="badge" id="histCount"></span></button>
     </nav>
+    <button type="button" class="cloud-chip" id="cloudChip" data-state="idle" title="雲端同步狀態">
+      <span class="dot" aria-hidden="true"></span><span id="cloudText">本機</span>
+    </button>
   </div>
 </header>
 
@@ -545,6 +580,19 @@
 </section>
 </main>
 
+<div class="modal" id="pinModal" role="dialog" aria-modal="true" aria-labelledby="pinTitle">
+  <div class="modal-card">
+    <h3 id="pinTitle">輸入社群密碼</h3>
+    <p>有密碼才能把資料存到雲端（其他人才能看到你改的內容）。只是瀏覽畫面的話不用輸入。</p>
+    <input id="pinInput" type="password" inputmode="numeric" autocomplete="current-password" placeholder="社群密碼">
+    <p class="err" id="pinErr"></p>
+    <div class="modal-actions">
+      <button type="button" class="btn ghost" id="pinCancel">取消</button>
+      <button type="button" class="btn primary" id="pinOk">解鎖</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <script>
 (function () {
@@ -585,44 +633,265 @@
     return y + '/' + m + '/' + d + '（' + '日一二三四五六'[dt.getDay()] + '）';
   }
 
-  /* ---------------- storage ---------------- */
-  var DEFAULT_COSTS = { venue: '', unit: '', count: '', misc: '' };
+  /* ---------------- storage: local cache + cloud ---------------- */
+  var CLOUD = {
+    url: 'https://tmkqdgdvcrdwvikxvyws.supabase.co',
+    key: 'sb_publishable_VbPKKW9cQQvFOorKb-t5vA_OGMpULgO',
+    pinKey: 'badminton-split-pin',
+    verKey: 'badminton-split-ver',
+    dirtyKey: 'badminton-split-dirty',
+    pin: '',
+    version: 0,
+    dirty: false,
+    empty: false,
+    busy: false,
+    again: false,
+    online: false,
+    timer: null
+  };
 
-  function loadDB() {
-    var base = {
+  function blankDB() {
+    return {
       members: [], attendance: {}, guests: [],
       costs: { venue: '', unit: '', count: '', misc: '' },
       rounding: 'int', weeks: [], weekDate: ''
     };
-    var saved = null;
-    try { saved = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) { saved = null; }
-    if (!saved || typeof saved !== 'object') return base;
+  }
+  function pick(v) { return (v === 0 || v) ? v : ''; }
 
-    var db = base;
-    db.members = (saved.members || []).filter(function (m) { return m && m.id && typeof m.name === 'string'; });
-    db.guests = (saved.guests || []).filter(function (g) { return g && g.id; });
-    db.weeks = Array.isArray(saved.weeks) ? saved.weeks : [];
-    db.attendance = (saved.attendance && typeof saved.attendance === 'object') ? saved.attendance : {};
-    db.costs = {
+  function normalize(saved) {
+    var out = blankDB();
+    if (!saved || typeof saved !== 'object') return out;
+    out.members = (saved.members || []).filter(function (m) { return m && m.id && typeof m.name === 'string'; });
+    out.guests = (saved.guests || []).filter(function (g) { return g && g.id; });
+    out.weeks = Array.isArray(saved.weeks) ? saved.weeks : [];
+    out.attendance = (saved.attendance && typeof saved.attendance === 'object') ? saved.attendance : {};
+    out.costs = {
       venue: pick(saved.costs && saved.costs.venue),
       unit: pick(saved.costs && saved.costs.unit),
       count: pick(saved.costs && saved.costs.count),
       misc: pick(saved.costs && saved.costs.misc)
     };
-    db.rounding = ['int', 'five', 'ten', 'none'].indexOf(saved.rounding) >= 0 ? saved.rounding : 'int';
-    db.weekDate = typeof saved.weekDate === 'string' ? saved.weekDate : '';
-    return db;
+    out.rounding = ['int', 'five', 'ten', 'none'].indexOf(saved.rounding) >= 0 ? saved.rounding : 'int';
+    out.weekDate = typeof saved.weekDate === 'string' ? saved.weekDate : '';
+    return out;
   }
-  function pick(v) { return (v === 0 || v) ? v : ''; }
+
+  function loadDB() {
+    var saved = null;
+    try { saved = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) { saved = null; }
+    return normalize(saved);
+  }
 
   var db = loadDB();
   var warned = false;
 
-  function saveDB() {
-    try { localStorage.setItem(KEY, JSON.stringify(db)); }
-    catch (e) {
+  function readFlag(k) { try { return localStorage.getItem(k) === '1'; } catch (e) { return false; } }
+  function writeFlag(k, v) { try { if (v) localStorage.setItem(k, '1'); else localStorage.removeItem(k); } catch (e) {} }
+
+  CLOUD.pin = (function () { try { return localStorage.getItem(CLOUD.pinKey) || ''; } catch (e) { return ''; } })();
+  CLOUD.version = (function () { try { return parseInt(localStorage.getItem(CLOUD.verKey) || '0', 10) || 0; } catch (e) { return 0; } })();
+  CLOUD.dirty = readFlag(CLOUD.dirtyKey);
+
+  function cacheDB() {
+    try {
+      localStorage.setItem(KEY, JSON.stringify(db));
+      localStorage.setItem(CLOUD.verKey, String(CLOUD.version));
+    } catch (e) {
       if (!warned) { warned = true; toast('瀏覽器無法儲存，關掉頁面後資料會消失'); }
     }
+  }
+
+  function saveDB() {
+    cacheDB();
+    queueSync(false);
+  }
+
+  /* ---------------- cloud sync ---------------- */
+  function setCloud(state, text) {
+    var chip = $('#cloudChip'), label = $('#cloudText');
+    if (chip) chip.setAttribute('data-state', state);
+    if (label) label.textContent = text;
+    CLOUD.state = state;
+  }
+
+  function cloudReady() { return !!(CLOUD.key && CLOUD.key.indexOf('__') !== 0); }
+
+  function cloudFetch(path, body) {
+    return fetch(CLOUD.url + '/rest/v1/' + path, {
+      method: 'POST',
+      headers: {
+        'apikey': CLOUD.key,
+        'Authorization': 'Bearer ' + CLOUD.key,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(body || {})
+    }).then(function (res) {
+      return res.text().then(function (txt) {
+        var data = null;
+        try { data = txt ? JSON.parse(txt) : null; } catch (e) { data = null; }
+        if (!res.ok) {
+          var raw = (data && (data.message || data.hint || data.error_description || data.details)) || ('HTTP ' + res.status);
+          var err = new Error(String(raw));
+          err.code = String(raw);
+          throw err;
+        }
+        return data;
+      });
+    });
+  }
+
+  function queueSync(now) {
+    CLOUD.dirty = true;
+    writeFlag(CLOUD.dirtyKey, true);
+    if (!cloudReady()) { setCloud('idle', '本機'); return; }
+    if (!CLOUD.pin) { setCloud('need', '需解鎖'); return; }
+    if (now) { pushNow(); return; }
+    clearTimeout(CLOUD.timer);
+    CLOUD.timer = setTimeout(function () { pushNow(); }, 900);
+  }
+
+  function pushNow() {
+    if (!cloudReady() || !CLOUD.pin) { setCloud('need', '需解鎖'); return Promise.resolve(false); }
+    if (CLOUD.busy) { CLOUD.again = true; return Promise.resolve(false); }
+    CLOUD.busy = true;
+    clearTimeout(CLOUD.timer);
+    setCloud('busy', '儲存中…');
+    var payload = JSON.parse(JSON.stringify(db));
+
+    return cloudFetch('rpc/club_save', { p_pin: CLOUD.pin, p_data: payload, p_version: CLOUD.version })
+      .then(function (res) {
+        CLOUD.online = true;
+        CLOUD.empty = false;
+        CLOUD.version = (res && res.version) || CLOUD.version;
+        CLOUD.dirty = false;
+        writeFlag(CLOUD.dirtyKey, false);
+        cacheDB();
+        setCloud('ok', '已同步');
+        return true;
+      })
+      .catch(function (err) {
+        var code = String((err && err.code) || '');
+        if (code.indexOf('BAD_PIN') >= 0) {
+          CLOUD.pin = '';
+          try { localStorage.removeItem(CLOUD.pinKey); } catch (e) {}
+          setCloud('need', '密碼錯誤');
+          toast('密碼不對，請重新輸入');
+        } else if (code.indexOf('LOCKED') >= 0) {
+          setCloud('need', '暫時鎖定');
+          toast('嘗試太多次，請等 1 分鐘再試');
+        } else if (code.indexOf('VERSION_CONFLICT') >= 0) {
+          CLOUD.dirty = false;
+          writeFlag(CLOUD.dirtyKey, false);
+          toast('別人剛更新過，正在載入最新資料');
+          cloudLoad(true);
+        } else {
+          CLOUD.online = false;
+          setCloud('err', '離線');
+        }
+        return false;
+      })
+      .then(function (ok) {
+        CLOUD.busy = false;
+        if (CLOUD.again) { CLOUD.again = false; queueSync(true); }
+        return ok;
+      });
+  }
+
+  function inputBusy() {
+    var a = document.activeElement;
+    return !!(a && (a.tagName === 'INPUT' || a.tagName === 'SELECT' || a.tagName === 'TEXTAREA'));
+  }
+
+  function applyRemote(doc) {
+    var data = normalize(doc.data);
+    if (!data.weekDate) data.weekDate = db.weekDate || todayStr();
+    db = data;
+    CLOUD.version = doc.version || 0;
+    cacheDB();
+    paintInputs();
+    renderAll();
+  }
+
+  function cloudLoad(silent) {
+    if (!cloudReady()) { setCloud('idle', '本機'); return Promise.resolve(false); }
+    if (!silent) setCloud('busy', '連線中…');
+
+    return cloudFetch('rpc/club_get', {}).then(function (doc) {
+      CLOUD.online = true;
+
+      if (!doc) {
+        CLOUD.empty = true;
+        if (CLOUD.dirty && CLOUD.pin) { pushNow(); return false; }
+        setCloud(CLOUD.pin ? 'ok' : 'need', CLOUD.pin ? '雲端空白' : '需解鎖');
+        return false;
+      }
+
+      CLOUD.empty = false;
+
+      if (CLOUD.dirty) {
+        if (CLOUD.pin) { CLOUD.version = doc.version || 0; pushNow(); return false; }
+        CLOUD.version = doc.version || 0;
+        setCloud('need', '需解鎖');
+        return false;
+      }
+
+      if ((doc.version || 0) > CLOUD.version) {
+        if (inputBusy()) {
+          setCloud('need', '有更新');
+          toast('雲端有更新，離開輸入框後會自動載入');
+          return false;
+        }
+        applyRemote(doc);
+        setCloud('ok', '已同步');
+        return true;
+      }
+
+      setCloud('ok', '已同步');
+      return false;
+    }).catch(function () {
+      CLOUD.online = false;
+      setCloud('err', '離線');
+      return false;
+    });
+  }
+
+  function pollCloud() {
+    if (document.hidden || CLOUD.busy) return;
+    if (CLOUD.dirty) return;
+    cloudLoad(true);
+  }
+
+  /* ---------------- pin modal ---------------- */
+  function openPin() {
+    $('#pinErr').textContent = '';
+    $('#pinInput').value = '';
+    $('#pinModal').classList.add('open');
+    setTimeout(function () { $('#pinInput').focus(); }, 40);
+  }
+  function closePin() { $('#pinModal').classList.remove('open'); }
+
+  function submitPin() {
+    var v = $('#pinInput').value.trim();
+    if (!v) { $('#pinErr').textContent = '請輸入密碼'; return; }
+    if (!cloudReady()) { $('#pinErr').textContent = '尚未設定雲端連線'; return; }
+
+    setCloud('busy', '驗證中…');
+    cloudFetch('rpc/club_verify', { p_pin: v }).then(function () {
+      CLOUD.pin = v;
+      try { localStorage.setItem(CLOUD.pinKey, v); } catch (e) {}
+      closePin();
+      toast('已解鎖，開始同步');
+      if (CLOUD.dirty || CLOUD.empty) pushNow();
+      else cloudLoad(true);
+    }).catch(function (err) {
+      var code = String((err && err.code) || '');
+      CLOUD.pin = '';
+      $('#pinErr').textContent = code.indexOf('LOCKED') >= 0
+        ? '嘗試太多次，請等 1 分鐘'
+        : '密碼不對，再試一次';
+      setCloud('need', '需解鎖');
+    });
   }
 
   function att(id) {
@@ -1131,6 +1400,26 @@
 
     $('#saveWeek').addEventListener('click', saveWeek);
     $('#resetWeek').addEventListener('click', resetWeek);
+
+    $('#cloudChip').addEventListener('click', function () {
+      if (!cloudReady()) { toast('雲端尚未設定，目前只存在這台裝置'); return; }
+      if (CLOUD.pin && !CLOUD.dirty) cloudLoad(false);
+      else openPin();
+    });
+    $('#pinOk').addEventListener('click', submitPin);
+    $('#pinCancel').addEventListener('click', closePin);
+    $('#pinInput').addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') { e.preventDefault(); submitPin(); }
+    });
+    $('#pinModal').addEventListener('click', function (e) {
+      if (e.target === $('#pinModal')) closePin();
+    });
+
+    document.addEventListener('focusout', function () {
+      setTimeout(function () {
+        if (!inputBusy() && CLOUD.state === 'need' && CLOUD.pin) cloudLoad(true);
+      }, 220);
+    });
   }
 
   /* ---------------- init ---------------- */
@@ -1138,6 +1427,17 @@
   paintInputs();
   bind();
   renderAll();
+
+  if (cloudReady()) {
+    setCloud(CLOUD.pin ? 'busy' : 'need', CLOUD.pin ? '連線中…' : '需解鎖');
+    cloudLoad(false);
+    setInterval(pollCloud, 20000);
+    document.addEventListener('visibilitychange', function () {
+      if (!document.hidden) pollCloud();
+    });
+  } else {
+    setCloud('idle', '本機');
+  }
 })();
 </script>
 </body>
